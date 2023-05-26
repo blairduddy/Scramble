@@ -14,6 +14,9 @@ struct ContentView: View {
     @State private var errorTitle = ""
     @State private var errorMessage = ""
     @State private var showingError = false
+    @State private var userScore = 0
+    
+    
     
     func addNewWord() {
         let answer = newWord.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -30,14 +33,24 @@ struct ContentView: View {
             wordError(title: "Word not recognized", message: "You can't just make them up you know!")
             return
         }
+        guard isRootWord(word: answer) else {
+            wordError(title: "That's the same word!", message: "What other words can you make from '\(rootWord)?")
+            return
+        }
+        guard isTooShort(word: answer) else {
+            wordError(title: "Too short!", message: "Try to think of a word with more than 2 letters...")
+            return
+        }
         withAnimation {
             usedWords.insert(answer, at: 0)
         }
+        userScore += 1
         newWord = ""
     }
     
-    
     func startGame(){
+        userScore = 0
+        usedWords = [String]()
         if let startWordsURL = Bundle.main.url(forResource: "start", withExtension: "txt") {
             if let startWords = try? String(contentsOf: startWordsURL) {
                 let allWords = startWords.components(separatedBy: "\n")
@@ -47,13 +60,11 @@ struct ContentView: View {
         }
         fatalError("Could not load start.txt from bundle.")
     }
-    
-    
+        
     func isOriginal(word: String) -> Bool {
         !usedWords.contains(word)
     }
-    
-    
+        
     func isPossible(word: String) -> Bool {
         var tempWord = rootWord
         
@@ -66,8 +77,7 @@ struct ContentView: View {
         }
         return true
     }
-    
-    
+        
     func isReal(word: String) -> Bool {
         let checker = UITextChecker()
         let range = NSRange(location: 0, length: word.utf16.count)
@@ -76,12 +86,27 @@ struct ContentView: View {
         return misspelledRange.location == NSNotFound
     }
     
-    
+    func isRootWord(word: String) -> Bool {
+        return word != rootWord
+    }
+        
+    func isTooShort(word: String) -> Bool {
+        if word.count < 3 {
+            return false
+        } else {
+            return true
+        }
+    }
+       
     func wordError(title: String, message: String) {
         errorTitle = title
         errorMessage = message
         showingError = true
     }
+    
+    
+    
+    
     
     var body: some View {
         NavigationView() {
@@ -99,10 +124,17 @@ struct ContentView: View {
                         }
                     }
                 }
+                
+                Section {
+                    Text("User Score: \(userScore)")
+                }
             }
             .navigationTitle(rootWord)
             .onSubmit(addNewWord)
             .onAppear(perform: startGame)
+            .toolbar {
+                Button("Need a new word?", action: startGame)
+            }
             
             
             .alert(errorTitle, isPresented: $showingError) {
